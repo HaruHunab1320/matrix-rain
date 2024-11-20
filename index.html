@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrix Rain</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: black;
+        }
+        
+        canvas {
+            display: block;
+        }
+
+        /* Pre-load the font to prevent FOIT (Flash of Invisible Text) */
+        @font-face {
+            font-family: 'MatrixFont';
+            src: local('Courier New Bold'),
+                 local('Courier Bold'),
+                 local('Courier');
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrix"></canvas>
+    <script src="matrix.js"></script>
+</body>
+</html> 
