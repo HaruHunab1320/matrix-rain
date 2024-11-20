@@ -15,7 +15,6 @@
             display: block;
         }
 
-        /* Pre-load the font to prevent FOIT (Flash of Invisible Text) */
         @font-face {
             font-family: 'MatrixFont';
             src: local('Courier New Bold'),
@@ -24,24 +23,87 @@
             font-weight: bold;
         }
 
-        #modeToggle {
+        #devTools {
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 1000;
-            padding: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #0f0;
+            padding: 15px;
+            color: #0f0;
+            font-family: monospace;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .control-group input[type="range"] {
+            width: 200px;
+            margin-right: 10px;
+        }
+
+        .value-display {
+            display: inline-block;
+            min-width: 40px;
+        }
+
+        #modeToggle {
             background: rgba(0, 0, 0, 0.7);
             color: #0f0;
             border: 1px solid #0f0;
+            padding: 8px 15px;
             cursor: pointer;
+            width: 100%;
+            margin-bottom: 15px;
         }
+
         #modeToggle:hover {
             background: rgba(0, 255, 0, 0.2);
+        }
+
+        #devTools.collapsed {
+            width: 30px;
+            height: 30px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        #toggleDevTools {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: none;
+            border: none;
+            color: #0f0;
+            cursor: pointer;
+            font-size: 16px;
         }
     </style>
 </head>
 <body>
-    <button id="modeToggle" onclick="toggleMode()">Toggle Mode</button>
+    <div id="devTools">
+        <button id="toggleDevTools">_</button>
+        <button id="modeToggle" onclick="window.matrixInstance.toggleMode()">Toggle Mode</button>
+        <div class="control-group">
+            <label>Layers: <span class="value-display" id="layersValue">10</span></label>
+            <input type="range" id="layersControl" min="3" max="20" value="10">
+        </div>
+        <div class="control-group">
+            <label>Speed Multiplier: <span class="value-display" id="speedValue">1.0</span></label>
+            <input type="range" id="speedControl" min="0.1" max="3" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+            <label>Drop Width: <span class="value-display" id="widthValue">1.0</span></label>
+            <input type="range" id="widthControl" min="0.5" max="2" step="0.1" value="1.0">
+        </div>
+    </div>
     <canvas id="matrix"></canvas>
     <script src="matrix.js"></script>
 </body>

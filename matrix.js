@@ -1,5 +1,15 @@
 class RainDrop {
-  constructor(x, y, speed, brightness, fontSize, layer, chars, colors) {
+  constructor(
+    x,
+    y,
+    speed,
+    brightness,
+    fontSize,
+    layer,
+    chars,
+    colors,
+    canvasHeight
+  ) {
     this.x = x;
     this.y = y;
     this.speed = speed;
@@ -8,8 +18,10 @@ class RainDrop {
     this.layer = layer;
     this.chars = chars;
     this.colors = colors;
+    this.canvasHeight = canvasHeight;
     this.trail = [];
     this.trailLength = Math.floor(30 + Math.random() * 15);
+    this.fadeOut = 1;
     this.initTrail();
   }
 
@@ -24,8 +36,10 @@ class RainDrop {
         const char = this.getRandomChar();
         return {
           char: char,
+          nextChar: char,
+          transitionProgress: 0,
           color: this.getColor(char),
-          brightness: i === 0 ? 1 : Math.pow(0.94, i),
+          brightness: i === 0 ? 1 : Math.pow(0.85, i),
           isHead: i === 0,
         };
       });
@@ -36,14 +50,34 @@ class RainDrop {
 
     this.trail.forEach((trailChar, i) => {
       if (
-        (i === 0 && Math.random() < 0.15) ||
-        (i !== 0 && Math.random() < 0.05)
+        trailChar.transitionProgress > 0 &&
+        trailChar.transitionProgress < 1
       ) {
-        const newChar = this.getRandomChar();
-        trailChar.char = newChar;
-        trailChar.color = this.getColor(newChar);
+        trailChar.transitionProgress += 0.1;
+        if (trailChar.transitionProgress >= 1) {
+          trailChar.char = trailChar.nextChar;
+          trailChar.transitionProgress = 0;
+        }
+      } else if (
+        (i === 0 && Math.random() < 0.05) ||
+        (i !== 0 && Math.random() < 0.01)
+      ) {
+        trailChar.nextChar = this.getRandomChar();
+        trailChar.transitionProgress = 0.1;
+        trailChar.color = this.getColor(trailChar.nextChar);
+        if (i === 0) {
+          trailChar.brightness = 1;
+        }
       }
     });
+
+    if (this.y > this.canvasHeight * 0.9) {
+      const fadeOutValue = Math.max(
+        0,
+        1 - (this.y - this.canvasHeight * 0.9) / (this.canvasHeight * 0.3)
+      );
+      this.fadeOut = fadeOutValue;
+    }
   }
 
   getRandomChar() {
@@ -52,8 +86,18 @@ class RainDrop {
 }
 
 class ClassicRainDrop extends RainDrop {
-  constructor(x, y, speed, brightness, fontSize, layer, chars, color) {
-    super(x, y, speed, brightness, fontSize, layer, chars, color);
+  constructor(
+    x,
+    y,
+    speed,
+    brightness,
+    fontSize,
+    layer,
+    chars,
+    color,
+    canvasHeight
+  ) {
+    super(x, y, speed, brightness, fontSize, layer, chars, color, canvasHeight);
   }
 
   getColor() {
@@ -62,8 +106,28 @@ class ClassicRainDrop extends RainDrop {
 }
 
 class IChingRainDrop extends RainDrop {
-  constructor(x, y, speed, brightness, fontSize, layer, chars, colors) {
-    super(x, y, speed, brightness, fontSize, layer, chars, colors);
+  constructor(
+    x,
+    y,
+    speed,
+    brightness,
+    fontSize,
+    layer,
+    chars,
+    colors,
+    canvasHeight
+  ) {
+    super(
+      x,
+      y,
+      speed,
+      brightness,
+      fontSize,
+      layer,
+      chars,
+      colors,
+      canvasHeight
+    );
   }
 
   getColor(char) {
@@ -79,15 +143,18 @@ class MatrixRain {
     this.ctx.textBaseline = "top";
     this.ctx.textAlign = "center";
 
-    // Define layers first
+    // Extended to 10 layers with finer depth separation
     this.layers = [
-      { depth: 1.0, size: 34, count: 40, speedRange: [1.3, 1.9] },
-      { depth: 0.85, size: 30, count: 50, speedRange: [1.2, 1.7] },
-      { depth: 0.7, size: 26, count: 65, speedRange: [1.1, 1.5] },
-      { depth: 0.55, size: 22, count: 80, speedRange: [0.9, 1.3] },
-      { depth: 0.4, size: 18, count: 100, speedRange: [0.8, 1.1] },
-      { depth: 0.25, size: 14, count: 120, speedRange: [0.6, 0.9] },
-      { depth: 0.15, size: 10, count: 150, speedRange: [0.4, 0.7] },
+      { depth: 1.0, size: 36, count: 30, speedRange: [2.6, 3.4] }, // Closest
+      { depth: 0.9, size: 32, count: 35, speedRange: [2.4, 3.1] }, // Very near front
+      { depth: 0.8, size: 28, count: 40, speedRange: [2.2, 2.8] }, // Near front
+      { depth: 0.7, size: 24, count: 50, speedRange: [2.0, 2.6] }, // Mid-front
+      { depth: 0.6, size: 20, count: 60, speedRange: [1.8, 2.4] }, // Middle
+      { depth: 0.5, size: 18, count: 70, speedRange: [1.6, 2.2] }, // Mid-back
+      { depth: 0.4, size: 16, count: 80, speedRange: [1.4, 2.0] }, // Near back
+      { depth: 0.3, size: 14, count: 90, speedRange: [1.2, 1.8] }, // Far back
+      { depth: 0.2, size: 12, count: 100, speedRange: [1.0, 1.6] }, // Very far back
+      { depth: 0.1, size: 10, count: 110, speedRange: [0.8, 1.4] }, // Farthest
     ];
 
     // Then define modes
@@ -126,6 +193,77 @@ class MatrixRain {
 
     // Start animation
     this.animate();
+
+    // Store base configuration for scaling
+    this.baseConfig = {
+      speedMultiplier: 1.0,
+      widthMultiplier: 1.0,
+      layerCount: 10,
+    };
+
+    this.setupDevControls();
+  }
+
+  setupDevControls() {
+    // Toggle dev tools visibility
+    const devTools = document.getElementById("devTools");
+    const toggleBtn = document.getElementById("toggleDevTools");
+    toggleBtn.addEventListener("click", () => {
+      devTools.classList.toggle("collapsed");
+      toggleBtn.textContent = devTools.classList.contains("collapsed")
+        ? "+"
+        : "_";
+    });
+
+    // Layer control
+    const layersControl = document.getElementById("layersControl");
+    const layersValue = document.getElementById("layersValue");
+    layersControl.addEventListener("input", (e) => {
+      this.baseConfig.layerCount = parseInt(e.target.value);
+      layersValue.textContent = e.target.value;
+      this.updateLayers();
+    });
+
+    // Speed control
+    const speedControl = document.getElementById("speedControl");
+    const speedValue = document.getElementById("speedValue");
+    speedControl.addEventListener("input", (e) => {
+      this.baseConfig.speedMultiplier = parseFloat(e.target.value);
+      speedValue.textContent = e.target.value;
+      this.updateLayers();
+    });
+
+    // Width control
+    const widthControl = document.getElementById("widthControl");
+    const widthValue = document.getElementById("widthValue");
+    widthControl.addEventListener("input", (e) => {
+      this.baseConfig.widthMultiplier = parseFloat(e.target.value);
+      widthValue.textContent = e.target.value;
+      this.updateLayers();
+    });
+  }
+
+  updateLayers() {
+    const count = this.baseConfig.layerCount;
+    const speedMult = this.baseConfig.speedMultiplier;
+    const widthMult = this.baseConfig.widthMultiplier;
+
+    this.layers = Array(count)
+      .fill(null)
+      .map((_, i) => {
+        const depth = 1 - i / (count - 1);
+        return {
+          depth: depth,
+          size: Math.round((36 - 26 * (i / (count - 1))) * widthMult),
+          count: Math.round(30 + 80 * (i / (count - 1))),
+          speedRange: [
+            (2.6 - 1.8 * (i / (count - 1))) * speedMult,
+            (3.4 - 2.0 * (i / (count - 1))) * speedMult,
+          ],
+        };
+      });
+
+    this.initRain();
   }
 
   setMode(mode) {
@@ -144,7 +282,13 @@ class MatrixRain {
     const columnWidth = layer.size * 1.4;
     const columns = Math.floor(this.canvas.width / columnWidth);
     const column = Math.floor(Math.random() * columns);
-    const x = column * columnWidth;
+
+    // Add layer-specific offset
+    const layerOffset =
+      (this.layers.indexOf(layer) * columnWidth * 0.5) % columnWidth;
+    const randomOffset = (Math.random() - 0.5) * columnWidth * 0.3; // Add some randomness
+
+    const x = column * columnWidth + layerOffset + randomOffset;
     const y = Math.random() * -this.canvas.height;
     const speed =
       layer.speedRange[0] +
@@ -159,7 +303,8 @@ class MatrixRain {
         layer.size,
         layer,
         this.chars,
-        this.getColor()
+        this.getColor(),
+        this.canvas.height
       );
     } else {
       return new IChingRainDrop(
@@ -170,7 +315,8 @@ class MatrixRain {
         layer.size,
         layer,
         this.chars,
-        this.colors
+        this.colors,
+        this.canvas.height
       );
     }
   }
@@ -191,7 +337,7 @@ class MatrixRain {
   }
 
   draw() {
-    this.ctx.fillStyle = "rgb(0, 0, 0)";
+    this.ctx.fillStyle = "rgba(0, 0, 0, 1)";
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     this.raindrops.forEach((drop) => {
@@ -200,19 +346,19 @@ class MatrixRain {
       drop.trail.forEach((trailChar, index) => {
         this.ctx.font = `bold ${drop.fontSize}px MatrixFont`;
 
-        const color = trailChar.color || [0, 255, 70]; // Default to green if undefined
+        const color = trailChar.color || [0, 255, 70];
         const [r, g, b] = color;
-        const brightness = trailChar.brightness * drop.brightness;
+        const alpha = trailChar.isHead
+          ? trailChar.brightness
+          : trailChar.brightness * drop.fadeOut;
 
         if (trailChar.isHead) {
-          const brightR = Math.floor(r + (255 - r) * 0.5);
-          const brightG = Math.floor(g + (255 - g) * 0.5);
-          const brightB = Math.floor(b + (255 - b) * 0.5);
-          this.ctx.fillStyle = `rgb(${brightR}, ${brightG}, ${brightB})`;
+          this.ctx.fillStyle = `rgba(${Math.floor(r + (255 - r) * 0.5)}, 
+                                           ${Math.floor(g + (255 - g) * 0.5)}, 
+                                           ${Math.floor(b + (255 - b) * 0.5)},
+                                           1)`;
         } else {
-          this.ctx.fillStyle = `rgb(${Math.floor(r * brightness)}, 
-                                  ${Math.floor(g * brightness)}, 
-                                  ${Math.floor(b * brightness)})`;
+          this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
         }
 
         this.ctx.fillText(
@@ -220,9 +366,23 @@ class MatrixRain {
           Math.round(drop.x),
           Math.round(drop.y - index * drop.fontSize)
         );
+
+        if (
+          trailChar.transitionProgress > 0 &&
+          trailChar.transitionProgress < 1
+        ) {
+          this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${
+            alpha * trailChar.transitionProgress
+          })`;
+          this.ctx.fillText(
+            trailChar.nextChar,
+            Math.round(drop.x),
+            Math.round(drop.y - index * drop.fontSize)
+          );
+        }
       });
 
-      if (drop.y > this.canvas.height + 50) {
+      if (drop.fadeOut <= 0) {
         Object.assign(drop, this.createRaindrop(drop.layer));
       }
     });
@@ -232,14 +392,13 @@ class MatrixRain {
     this.draw();
     requestAnimationFrame(() => this.animate());
   }
+
+  toggleMode() {
+    this.setMode(this.currentMode === "classic" ? "iching" : "classic");
+  }
 }
 
-// Initialize with mode selection
+// Initialize with mode selection and store instance globally
 window.onload = () => {
-  const matrix = new MatrixRain("classic"); // or 'iching'
-
-  // Example of mode switching (you can bind this to a button or key press)
-  window.toggleMode = () => {
-    matrix.setMode(matrix.currentMode === "classic" ? "iching" : "classic");
-  };
+  window.matrixInstance = new MatrixRain("classic");
 };
