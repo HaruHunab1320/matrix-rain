@@ -23,9 +23,25 @@
                  local('Courier');
             font-weight: bold;
         }
+
+        #modeToggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #0f0;
+            border: 1px solid #0f0;
+            cursor: pointer;
+        }
+        #modeToggle:hover {
+            background: rgba(0, 255, 0, 0.2);
+        }
     </style>
 </head>
 <body>
+    <button id="modeToggle" onclick="toggleMode()">Toggle Mode</button>
     <canvas id="matrix"></canvas>
     <script src="matrix.js"></script>
 </body>
