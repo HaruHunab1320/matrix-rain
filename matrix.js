@@ -49,7 +49,34 @@ class RainDrop {
     this.y += this.speed;
 
     this.trail.forEach((trailChar, i) => {
+      if (i === 0) {
+        if (
+          trailChar.transitionProgress > 0 &&
+          trailChar.transitionProgress < 1
+        ) {
+          trailChar.transitionProgress += 0.1;
+          if (trailChar.transitionProgress >= 1) {
+            trailChar.char = trailChar.nextChar;
+            trailChar.transitionProgress = 0;
+            trailChar.nextChar = this.getRandomChar();
+            trailChar.transitionProgress = 0.1;
+            trailChar.color = this.getColor(trailChar.nextChar);
+            trailChar.brightness = 1;
+          }
+        } else {
+          trailChar.nextChar = this.getRandomChar();
+          trailChar.transitionProgress = 0.1;
+          trailChar.color = this.getColor(trailChar.nextChar);
+          trailChar.brightness = 1;
+        }
+      } else if (i !== 0 && Math.random() < 0.01) {
+        trailChar.nextChar = this.getRandomChar();
+        trailChar.transitionProgress = 0.1;
+        trailChar.color = this.getColor(trailChar.nextChar);
+      }
+
       if (
+        i !== 0 &&
         trailChar.transitionProgress > 0 &&
         trailChar.transitionProgress < 1
       ) {
@@ -57,16 +84,6 @@ class RainDrop {
         if (trailChar.transitionProgress >= 1) {
           trailChar.char = trailChar.nextChar;
           trailChar.transitionProgress = 0;
-        }
-      } else if (
-        (i === 0 && Math.random() < 0.05) ||
-        (i !== 0 && Math.random() < 0.01)
-      ) {
-        trailChar.nextChar = this.getRandomChar();
-        trailChar.transitionProgress = 0.1;
-        trailChar.color = this.getColor(trailChar.nextChar);
-        if (i === 0) {
-          trailChar.brightness = 1;
         }
       }
     });
@@ -143,25 +160,22 @@ class MatrixRain {
     this.ctx.textBaseline = "top";
     this.ctx.textAlign = "center";
 
-    // Extended to 10 layers with finer depth separation
-    this.layers = [
-      { depth: 1.0, size: 36, count: 30, speedRange: [2.6, 3.4] }, // Closest
-      { depth: 0.9, size: 32, count: 35, speedRange: [2.4, 3.1] }, // Very near front
-      { depth: 0.8, size: 28, count: 40, speedRange: [2.2, 2.8] }, // Near front
-      { depth: 0.7, size: 24, count: 50, speedRange: [2.0, 2.6] }, // Mid-front
-      { depth: 0.6, size: 20, count: 60, speedRange: [1.8, 2.4] }, // Middle
-      { depth: 0.5, size: 18, count: 70, speedRange: [1.6, 2.2] }, // Mid-back
-      { depth: 0.4, size: 16, count: 80, speedRange: [1.4, 2.0] }, // Near back
-      { depth: 0.3, size: 14, count: 90, speedRange: [1.2, 1.8] }, // Far back
-      { depth: 0.2, size: 12, count: 100, speedRange: [1.0, 1.6] }, // Very far back
-      { depth: 0.1, size: 10, count: 110, speedRange: [0.8, 1.4] }, // Farthest
-    ];
+    // Initialize text bounds first
+    this.centerText = document.getElementById("centerText");
+    this.textBounds = this.centerText.getBoundingClientRect();
 
-    // Then define modes
+    // Rest of your constructor code...
+    this.baseConfig = {
+      speedMultiplier: 2.5,
+      widthMultiplier: 0.9,
+      layerCount: 15,
+      dispersal: 2.0,
+    };
+
+    this.layers = this.generateLayers(this.baseConfig.layerCount);
     this.modes = {
       classic: {
-        chars:
-          "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ1234567890!@#$%^&*()",
+        chars: "☰☱☲☳☴☵☶☷",
         getColor: () => [0, 255, 70],
         colors: null,
       },
@@ -169,39 +183,31 @@ class MatrixRain {
         chars: "☷☶☵☴☳☲☱☰",
         getColor: null,
         colors: {
-          "☷": [255, 0, 0], // Earth (000) - Red
-          "☶": [255, 127, 0], // Mountain (001) - Orange
-          "☵": [255, 255, 0], // Water (010) - Yellow
-          "☴": [0, 255, 0], // Wind (011) - Green
-          "☳": [0, 255, 255], // Thunder (100) - Cyan
-          "☲": [0, 127, 255], // Fire (101) - Blue
-          "☱": [127, 0, 255], // Lake (110) - Purple
-          "☰": [255, 0, 255], // Heaven (111) - Magenta
+          "☷": [255, 0, 0],
+          "☶": [255, 127, 0],
+          "☵": [255, 255, 0],
+          "☴": [0, 255, 0],
+          "☳": [0, 255, 255],
+          "☲": [0, 127, 255],
+          "☱": [127, 0, 255],
+          "☰": [255, 0, 255],
         },
       },
     };
 
-    // Initialize raindrops array
     this.raindrops = [];
-
-    // Set initial mode
     this.setMode(mode);
+    this.setupDevControls();
 
     // Handle resize
     this.resize();
-    window.addEventListener("resize", () => this.resize());
+    window.addEventListener("resize", () => {
+      this.resize();
+      this.updateTextBounds();
+    });
 
     // Start animation
     this.animate();
-
-    // Store base configuration for scaling
-    this.baseConfig = {
-      speedMultiplier: 1.0,
-      widthMultiplier: 1.0,
-      layerCount: 10,
-    };
-
-    this.setupDevControls();
   }
 
   setupDevControls() {
@@ -215,54 +221,97 @@ class MatrixRain {
         : "_";
     });
 
-    // Layer control
+    // Layer control - only recreate if adding/removing layers
     const layersControl = document.getElementById("layersControl");
     const layersValue = document.getElementById("layersValue");
     layersControl.addEventListener("input", (e) => {
-      this.baseConfig.layerCount = parseInt(e.target.value);
+      const newCount = parseInt(e.target.value);
       layersValue.textContent = e.target.value;
-      this.updateLayers();
+      if (newCount !== this.layers.length) {
+        this.baseConfig.layerCount = newCount;
+        this.updateLayers(); // Only called when layer count changes
+      }
     });
 
-    // Speed control
+    // Speed control - update speed directly
     const speedControl = document.getElementById("speedControl");
     const speedValue = document.getElementById("speedValue");
     speedControl.addEventListener("input", (e) => {
       this.baseConfig.speedMultiplier = parseFloat(e.target.value);
       speedValue.textContent = e.target.value;
-      this.updateLayers();
+      this.updateRaindropsProperties(); // New method
     });
 
-    // Width control
+    // Width control - update size directly
     const widthControl = document.getElementById("widthControl");
     const widthValue = document.getElementById("widthValue");
     widthControl.addEventListener("input", (e) => {
       this.baseConfig.widthMultiplier = parseFloat(e.target.value);
       widthValue.textContent = e.target.value;
-      this.updateLayers();
+      this.updateRaindropsProperties(); // New method
+    });
+
+    // Add dispersal control
+    const dispersalControl = document.getElementById("dispersalControl");
+    const dispersalValue = document.getElementById("dispersalValue");
+    dispersalControl.addEventListener("input", (e) => {
+      this.baseConfig.dispersal = parseFloat(e.target.value);
+      dispersalValue.textContent = e.target.value;
+      this.updateRaindropsProperties();
+    });
+  }
+
+  updateRaindropsProperties() {
+    const speedMult = this.baseConfig.speedMultiplier;
+    const widthMult = this.baseConfig.widthMultiplier;
+    const dispersal = this.baseConfig.dispersal;
+
+    this.layers.forEach((layer, i) => {
+      // Update layer properties
+      layer.size = Math.round(
+        (36 - 26 * (i / (this.layers.length - 1))) * widthMult
+      );
+
+      // Update speed ranges
+      const baseMinSpeed = 2.6 - 1.8 * (i / (this.layers.length - 1));
+      const baseMaxSpeed = 3.4 - 2.0 * (i / (this.layers.length - 1));
+      layer.speedRange = [baseMinSpeed * speedMult, baseMaxSpeed * speedMult];
+
+      // Update existing raindrops for this layer
+      this.raindrops
+        .filter((drop) => drop.layer === layer)
+        .forEach((drop) => {
+          // Directly multiply current speed by multiplier
+          drop.speed *= speedMult;
+
+          // Clamp speed within the new range
+          drop.speed = Math.max(
+            layer.speedRange[0],
+            Math.min(layer.speedRange[1], drop.speed)
+          );
+
+          // Update fontSize
+          drop.fontSize = layer.size;
+
+          // Reposition some drops if dispersal changes significantly
+          if (Math.random() < 0.1) {
+            // 10% chance to reposition
+            const dispersalRange = this.canvas.height * 0.5 * dispersal;
+            drop.y = Math.random() * -dispersalRange;
+          }
+        });
     });
   }
 
   updateLayers() {
-    const count = this.baseConfig.layerCount;
-    const speedMult = this.baseConfig.speedMultiplier;
-    const widthMult = this.baseConfig.widthMultiplier;
+    // Generate new layers configuration
+    const newLayers = this.generateLayers(this.baseConfig.layerCount);
 
-    this.layers = Array(count)
-      .fill(null)
-      .map((_, i) => {
-        const depth = 1 - i / (count - 1);
-        return {
-          depth: depth,
-          size: Math.round((36 - 26 * (i / (count - 1))) * widthMult),
-          count: Math.round(30 + 80 * (i / (count - 1))),
-          speedRange: [
-            (2.6 - 1.8 * (i / (count - 1))) * speedMult,
-            (3.4 - 2.0 * (i / (count - 1))) * speedMult,
-          ],
-        };
-      });
+    // Clear existing raindrops
+    this.raindrops = [];
 
+    // Set new layers and initialize rain
+    this.layers = newLayers;
     this.initRain();
   }
 
@@ -279,17 +328,21 @@ class MatrixRain {
   }
 
   createRaindrop(layer) {
-    const columnWidth = layer.size * 1.4;
+    const columnWidth = layer.size * 2.5;
     const columns = Math.floor(this.canvas.width / columnWidth);
     const column = Math.floor(Math.random() * columns);
 
-    // Add layer-specific offset
-    const layerOffset =
-      (this.layers.indexOf(layer) * columnWidth * 0.5) % columnWidth;
-    const randomOffset = (Math.random() - 0.5) * columnWidth * 0.3; // Add some randomness
+    const layerIndex = this.layers.indexOf(layer);
+    const layerOffset = (layerIndex * columnWidth * 0.5) % columnWidth;
+
+    const randomOffset = (Math.random() - 0.5) * columnWidth * 0.2;
 
     const x = column * columnWidth + layerOffset + randomOffset;
-    const y = Math.random() * -this.canvas.height;
+
+    const baseDispersalRange = this.canvas.height * 0.5;
+    const dispersalRange = baseDispersalRange * this.baseConfig.dispersal;
+    const y = Math.random() * -dispersalRange;
+
     const speed =
       layer.speedRange[0] +
       Math.random() * (layer.speedRange[1] - layer.speedRange[0]);
@@ -329,9 +382,14 @@ class MatrixRain {
 
   initRain() {
     this.raindrops = [];
+    const dispersalRange = this.canvas.height * 0.5 * this.baseConfig.dispersal;
+
     this.layers.forEach((layer) => {
       for (let i = 0; i < layer.count; i++) {
-        this.raindrops.push(this.createRaindrop(layer));
+        const drop = this.createRaindrop(layer);
+        // Distribute initial positions across the dispersal range
+        drop.y = Math.random() * -dispersalRange;
+        this.raindrops.push(drop);
       }
     });
   }
@@ -340,12 +398,65 @@ class MatrixRain {
     this.ctx.fillStyle = "rgba(0, 0, 0, 1)";
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
+    // Create a separate canvas for the text reveal effect
+    const textCanvas = document.createElement("canvas");
+    textCanvas.width = this.canvas.width;
+    textCanvas.height = this.canvas.height;
+    const textCtx = textCanvas.getContext("2d");
+
+    // First draw the text in bright green
+    textCtx.fillStyle = "#00ff45"; // Matrix green
+    textCtx.font = "700 48px 'Red Hat Display'";
+    textCtx.textAlign = "center";
+    textCtx.textBaseline = "middle";
+    textCtx.fillText(
+      "ONEIROCOM",
+      this.canvas.width / 2,
+      this.canvas.height / 2 - 25
+    );
+
+    // Add SYSTEMS text
+    textCtx.font = "700 36px 'Red Hat Display'";
+    textCtx.fillText(
+      "SIMULATIONS",
+      this.canvas.width / 2,
+      this.canvas.height / 2 + 25
+    );
+
+    // Create a mask canvas
+    const maskCanvas = document.createElement("canvas");
+    maskCanvas.width = this.canvas.width;
+    maskCanvas.height = this.canvas.height;
+    const maskCtx = maskCanvas.getContext("2d");
+
+    // Draw the rain drops to create the mask
     this.raindrops.forEach((drop) => {
       drop.update();
 
       drop.trail.forEach((trailChar, index) => {
-        this.ctx.font = `bold ${drop.fontSize}px MatrixFont`;
+        const x = Math.round(drop.x);
+        const y = Math.round(drop.y - index * drop.fontSize);
 
+        // Only create mask where rain intersects with text bounds
+        const isOverText =
+          x >= this.textBounds.left &&
+          x <= this.textBounds.right &&
+          y >= this.textBounds.top &&
+          y <= this.textBounds.bottom;
+
+        if (isOverText) {
+          // Draw circular mask for more organic reveal
+          const radius = drop.fontSize / 2;
+          maskCtx.beginPath();
+          maskCtx.arc(x, y, radius, 0, Math.PI * 2);
+          maskCtx.fillStyle = `rgba(255, 255, 255, ${
+            trailChar.brightness * 0.7
+          })`;
+          maskCtx.fill();
+        }
+
+        // Draw the normal rain character
+        this.ctx.font = `${drop.fontSize}px MatrixFont`;
         const color = trailChar.color || [0, 255, 70];
         const [r, g, b] = color;
         const alpha = trailChar.isHead
@@ -354,38 +465,29 @@ class MatrixRain {
 
         if (trailChar.isHead) {
           this.ctx.fillStyle = `rgba(${Math.floor(r + (255 - r) * 0.5)}, 
-                                           ${Math.floor(g + (255 - g) * 0.5)}, 
-                                           ${Math.floor(b + (255 - b) * 0.5)},
-                                           1)`;
+                                         ${Math.floor(g + (255 - g) * 0.5)}, 
+                                         ${Math.floor(b + (255 - b) * 0.5)},
+                                         ${alpha})`;
         } else {
           this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
         }
 
-        this.ctx.fillText(
-          trailChar.char,
-          Math.round(drop.x),
-          Math.round(drop.y - index * drop.fontSize)
-        );
-
-        if (
-          trailChar.transitionProgress > 0 &&
-          trailChar.transitionProgress < 1
-        ) {
-          this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${
-            alpha * trailChar.transitionProgress
-          })`;
-          this.ctx.fillText(
-            trailChar.nextChar,
-            Math.round(drop.x),
-            Math.round(drop.y - index * drop.fontSize)
-          );
-        }
+        this.ctx.fillText(trailChar.char, x, y);
       });
 
       if (drop.fadeOut <= 0) {
         Object.assign(drop, this.createRaindrop(drop.layer));
       }
     });
+
+    // Apply the mask to the text
+    textCtx.globalCompositeOperation = "destination-in";
+    textCtx.drawImage(maskCanvas, 0, 0);
+
+    // Draw the final masked text
+    this.ctx.globalCompositeOperation = "lighter";
+    this.ctx.drawImage(textCanvas, 0, 0);
+    this.ctx.globalCompositeOperation = "source-over";
   }
 
   animate() {
@@ -395,6 +497,36 @@ class MatrixRain {
 
   toggleMode() {
     this.setMode(this.currentMode === "classic" ? "iching" : "classic");
+  }
+
+  // New method to generate layers
+  generateLayers(count) {
+    return Array(count)
+      .fill(null)
+      .map((_, i) => {
+        const depth = 1 - i / (count - 1);
+        return {
+          depth: depth,
+          size: Math.round(
+            (32 - 20 * (i / (count - 1))) * this.baseConfig.widthMultiplier
+          ),
+          count: Math.round(40 + 100 * (i / (count - 1))), // More drops per layer
+          speedRange: [
+            (3.0 - 2.0 * (i / (count - 1))) * this.baseConfig.speedMultiplier,
+            (3.8 - 2.2 * (i / (count - 1))) * this.baseConfig.speedMultiplier,
+          ],
+        };
+      });
+  }
+
+  updateTextBounds() {
+    const bounds = this.centerText.getBoundingClientRect();
+    this.textBounds = {
+      left: bounds.left,
+      right: bounds.right,
+      top: bounds.top,
+      bottom: bounds.bottom,
+    };
   }
 }
 
